@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculadora da Contadoria - CEPREC</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <img class="brandbar" src="assets/ceprec-brandbar.png" alt="">
+    <div class="header-content">
+      <div class="header-copy">
+        <span class="kicker">Coordenadoria de Execução e Precatórios · Contadoria</span>
+        <h1>Calculadora de Execuções contra a Fazenda</h1>
+        <p>Base de cálculo pelos modelos da Contadoria, atualização pelos marcos de correção e juros e demonstrativo em PDF.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <p id="importacaoSpa" class="import-banner" role="status" hidden></p>
+    <section class="index-band" aria-labelledby="indices-title">
+      <div class="index-status">
+        <span class="kicker">Tabela de índices</span>
+        <h2 id="indices-title">IPCA-E, IPCA, SELIC e juros da poupança</h2>
+        <p id="indexStatus" class="index-text">Verificando tabela…</p>
+      </div>
+      <div class="index-actions">
+        <button id="fetchBcbButton" class="ghost-button" type="button">Atualizar pelo Banco Central</button>
+        <label class="ghost-button file-button">Importar tabela
+          <input id="importIndicesInput" type="file" accept=".json,.js,application/json,text/javascript">
+        </label>
+        <details class="csv-import">
+          <summary>Importar CSV do SGS</summary>
+          <div class="csv-row">
+            <select id="csvSerieSelect" aria-label="Série do CSV">
+              <option value="ipcae">IPCA-E (SGS 10764)</option>
+              <option value="ipca">IPCA (SGS 433)</option>
+              <option value="selic">SELIC mensal (SGS 4390)</option>
+              <option value="poupancaJuros">Juros da poupança (% a.m.)</option>
+            </select>
+            <label class="ghost-button file-button">Escolher CSV
+              <input id="csvInput" type="file" accept=".csv,text/csv,text/plain">
+            </label>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="selector-band" aria-labelledby="selecao-title">
+      <div>
+        <span class="kicker">Seleção em cascata</span>
+        <h2 id="selecao-title">Núcleo e modelo de cálculo</h2>
+      </div>
+      <div class="field-grid">
+        <label class="field">
+          <span>Núcleo</span>
+          <select id="groupSelect"></select>
+        </label>
+        <label class="field">
+          <span>Modelo</span>
+          <select id="modelSelect"></select>
+        </label>
+      </div>
+    </section>
+
+    <section class="calculator-layout">
+      <aside class="case-panel" aria-labelledby="processo-title">
+        <div>
+          <span class="kicker">Identificação</span>
+          <h2 id="processo-title">Dados do processo</h2>
+        </div>
+        <label class="field">
+          <span>Processo (CNJ)</span>
+          <input id="processoInput" class="editable" type="text" inputmode="numeric" placeholder="0000000-00.0000.8.11.0000">
+          <small id="processoHint" class="hint"></small>
+        </label>
+        <label class="field">
+          <span>Exequente</span>
+          <input id="exequenteInput" class="editable" type="text" placeholder="Nome do exequente">
+        </label>
+        <label class="field">
+          <span>Executado</span>
+          <input id="executadoInput" type="text" value="Estado de Mato Grosso">
+        </label>
+        <div class="stack">
+          <label class="field">
+            <span>Data da citação</span>
+            <input id="citacaoInput" class="editable" type="date">
+          </label>
+          <label class="field">
+            <span>Data-base do cálculo</span>
+            <input id="dataBaseInput" class="editable" type="date">
+          </label>
+        </div>
+        <div class="stack">
+          <label class="field">
+            <span>Valor do exequente</span>
+            <input id="valorExequenteInput" class="editable" type="text" inputmode="decimal" placeholder="R$ 0,00">
+          </label>
+          <label class="field">
+            <span>Id. do cálculo do exequente</span>
+            <input id="idExequenteInput" class="editable" type="text" placeholder="Id. PJe">
+          </label>
+        </div>
+        <label class="field">
+          <span>UPF/MT do mês de referência (R$)</span>
+          <input id="upfInput" class="editable" type="text" inputmode="decimal" placeholder="ex.: 265,28">
+          <small class="hint">Define o limite de 100 UPF para RPV (Lei MT 10.656/2017).</small>
+        </label>
+      </aside>
+
+      <section class="calc-panel" aria-labelledby="calc-title">
+        <div class="calc-head">
+          <div>
+            <span id="activeGroup" class="kicker"></span>
+            <h2 id="calc-title"></h2>
+            <p id="modelNote" class="model-note"></p>
+          </div>
+          <div class="total-stack">
+            <div class="total-card" aria-live="polite">
+              <span>Total atualizado</span>
+              <strong id="grandTotal">R$ 0,00</strong>
+              <em id="requisicaoTag" class="req-tag" hidden></em>
+            </div>
+            <div class="total-actions">
+              <button id="downloadPdfButton" class="download-button" type="button">Gerar demonstrativo PDF</button>
+              <button id="copyTableButton" class="copy-button" type="button" title="Copiar tabela" aria-label="Copiar tabela">⧉</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="modelParams" class="model-params"></div>
+
+        <div class="legend" aria-label="Legenda de campos">
+          <span><i class="legend-editable"></i>Campos em vermelho são editáveis</span>
+          <span><i class="legend-fixed"></i>Campos fixos ou calculados</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="cost-table">
+            <thead id="itemsHead"></thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button id="addRowButton" class="ghost-button" type="button">+ Adicionar linha</button>
+          <button id="resetButton" class="ghost-button" type="button">Restaurar exemplo do modelo</button>
+        </div>
+
+        <div id="alerts" class="alerts" aria-live="polite"></div>
+
+        <div class="summary-grid">
+          <div class="summary-item"><span>Subtotal (base de cálculo)</span><strong id="subtotalValue">R$ 0,00</strong></div>
+          <div class="summary-item"><span>Valor corrigido</span><strong id="corrigidoValue">—</strong></div>
+          <div class="summary-item"><span>Juros de mora até 11/2021</span><strong id="jurosValue">—</strong></div>
+          <div class="summary-item is-total"><span>Total</span><strong id="totalValue">—</strong></div>
+        </div>
+        <p id="diferencaText" class="diferenca"></p>
+
+        <section class="consideracoes" aria-labelledby="cons-title">
+          <span class="kicker">Considerações</span>
+          <h3 id="cons-title">Motivos da diferença em relação ao exequente</h3>
+          <div id="motivosList" class="motivos"></div>
+          <label class="field">
+            <span>Texto complementar</span>
+            <textarea id="consideracaoLivre" class="editable" rows="2" placeholder="Outros motivos, se houver"></textarea>
+          </label>
+          <p id="consideracaoPreview" class="consideracao-preview"></p>
+        </section>
+
+        <details class="memoria" open>
+          <summary>Memória de cálculo por parcela</summary>
+          <div class="table-wrap">
+            <table class="cost-table memoria-table">
+              <thead>
+                <tr><th>Parcela</th><th>Valor</th><th>Termo inicial</th><th>Etapas aplicadas</th><th>Atualizado</th></tr>
+              </thead>
+              <tbody id="memoriaBody"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <div class="formula-panel">
+          <div>
+            <span class="kicker">Critérios aplicados</span>
+            <p>Correção pelo IPCA-E até 11/2021 e juros de mora de 1% a.m. (até 07/2001), 0,5% a.m. (08/2001 a 06/2009) e juros da poupança (07/2009 a 11/2021), simples, desde a citação. De 12/2021 a 08/2025, SELIC (EC 113/2021) em soma simples, uma única vez. A partir de 09/2025, IPCA e juros simples de 2% a.a., limitados à SELIC do período (EC 136/2025). Índices do mês do termo inicial ao mês anterior à data-base.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Ferramenta de apoio. O cálculo deve ser conferido pela Contadoria antes de juntada aos autos. Regras inferidas dos modelos da Contadoria estão sinalizadas na tela.</p>
+  </footer>
+
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="assets/brandbar-data.js"></script>
+  <script src="data/indices.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/importar_spa.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
